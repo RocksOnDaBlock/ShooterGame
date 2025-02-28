@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroBlast FPS</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00e6;
+            --dark-purple: #1a0033;
+            --retro-black: #0d0208;
+        }
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background-color: var(--retro-black);
+            color: #fff;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #menu {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            position: absolute;
+        }
+        
+        .retro-title {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue), 0 0 30px var(--neon-blue);
+            color: var(--neon-pink);
+            letter-spacing: 4px;
+        }
+        
+        .retro-button {
+            background-color: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-family: 'Courier New', monospace;
+            font-size: 1.5rem;
+            padding: 0.8rem 2rem;
+            margin: 0.5rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+        
+        .retro-button:hover {
+            background-color: var(--neon-blue);
+            color: var(--dark-purple);
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+        
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 1rem 0;
+            width: 300px;
+        }
+        
+        .option-group {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        
+        .option-title {
+            color: var(--neon-pink);
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+        
+        .option-buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .option-button {
+            background-color: transparent;
+            border: 1px solid var(--neon-blue);
+            color: #fff;
+            padding: 0.5rem;
+            flex: 1;
+            margin: 0 0.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .option-button.selected {
+            background-color: var(--neon-blue);
+            color: var(--dark-purple);
+        }
+        
+        .option-button:hover {
+            background-color: rgba(0, 243, 255, 0.3);
+        }
+        
+        #hud {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            opacity: 0.8;
+        }
+        
+        #health-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--neon-pink);
+        }
+        
+        #health-fill {
+            height: 100%;
+            width: 100%;
+            background-color: var(--neon-pink);
+        }
+        
+        #ammo-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: var(--neon-blue);
+        }
+        
+        #weapon-display {
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: var(--neon-pink);
+        }
+        
+        #message-area {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--neon-blue);
+        }
+        
+        #player-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border: 1px solid var(--neon-blue);
+        }
+        
+        .player-item {
+            margin: 5px 0;
+        }
+        
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--retro-black);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        
+        .loading-bar-container {
+            width: 300px;
+            height: 30px;
+            border: 2px solid var(--neon-blue);
+            margin-top: 20px;
+        }
+        
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--neon-pink);
+            transition: width 0.5s;
+        }
+        
+        @media (max-width: 768px) {
+            .retro-title {
+                font-size: 2.5rem;
+            }
+            
+            .retro-button {
+                font-size: 1.2rem;
+                padding: 0.6rem 1.5rem;
+            }
+            
+            .options-container {
+                width: 90%;
+            }
+        }
+        
+        .scene {
+            perspective: 600px;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .grid-floor {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(var(--neon-blue) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--neon-blue) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: rotateX(60deg);
+            transform-origin: center top;
+            animation: grid-move 5s linear infinite;
+        }
+        
+        @keyframes grid-move {
+            from {
+                background-position: 0 0;
+            }
+            to {
+                background-position: 0 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen">
+            <div class="retro-title">RETRO BLAST</div>
+            <div class="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+        </div>
+        
+        <!-- Main Menu -->
+        <div id="menu">
+            <div class="scene">
+                <div class="grid-floor"></div>
+            </div>
+            <h1 class="retro-title">RETRO BLAST</h1>
+            
+            <div class="options-container">
+                <div class="option-group">
+                    <div class="option-title">PLAYER MODEL</div>
+                    <div class="option-buttons">
+                        <button class="option-button selected" data-model="commando">COMMANDO</button>
+                        <button class="option-button" data-model="scout">SCOUT</button>
+                        <button class="option-button" data-model="heavy">HEAVY</button>
+                    </div>
+                </div>
+                
+                <div class="option-group">
+                    <div class="option-title">PRIMARY WEAPON</div>
+                    <div class="option-buttons">
+                        <button class="option-button selected" data-weapon="assault">ASSAULT</button>
+                        <button class="option-button" data-weapon="shotgun">SHOTGUN</button>
+                        <button class="option-button" data-weapon="sniper">SNIPER</button>
+                    </div>
+                </div>
+                
+                <div class="option-group">
+                    <div class="option-title">MAP SELECTION</div>
+                    <div class="option-buttons">
+                        <button class="option-button selected" data-map="grid">GRID</button>
+                        <button class="option-button" data-map="warehouse">WAREHOUSE</button>
+                        <button class="option-button" data-map="neon">NEON CITY</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="retro-button" id="start-button">JOIN GAME</button>
+            <button class="retro-button" id="settings-button">SETTINGS</button>
+        </div>
+        
+        <!-- Game Canvas -->
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- HUD Elements -->
+        <div id="hud">
+            <div id="crosshair">+</div>
+            <div id="health-bar"><div id="health-fill"></div></div>
+            <div id="weapon-display">ASSAULT RIFLE</div>
+            <div id="ammo-display">30 / 90</div>
+            <div id="message-area"></div>
+            <div id="player-list">
+                <div class="player-item">PLAYER1: 5</div>
+                <div class="player-item">PLAYER2: 3</div>
+                <div class="player-item">YOU: 2</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game initialization and simulation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Loading screen simulation
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingScreen = document.getElementById('loading-screen');
+            const menu = document.getElementById('menu');
+            const gameCanvas = document.getElementById('game-canvas');
+            const hud = document.getElementById('hud');
+            const startButton = document.getElementById('start-button');
+            const messageArea = document.getElementById('message-area');
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Hide HUD initially
+            hud.style.display = 'none';
+            
+            // Simulate loading
+            let progress = 0;
+            const loadingInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(loadingInterval);
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        menu.style.display = 'flex';
+                    }, 500);
+                }
+                loadingBar.style.width = progress + '%';
+            }, 300);
+            
+            // Option selection
+            const optionButtons = document.querySelectorAll('.option-button');
+            optionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selected class from siblings
+                    const siblings = this.parentNode.querySelectorAll('.option-button');
+                    siblings.forEach(sib => sib.classList.remove('selected'));
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                });
+            });
+            
+            // Game state
+            let gameActive = false;
+            let playerHealth = 100;
+            let playerAmmo = 30;
+            let playerReserveAmmo = 90;
+            let playerKills = 0;
+            let playerPosition = { x: 0, y: 0 };
+            let playerDirection = 0;
+            
+            // Canvas sizing
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                if (gameActive) {
+                    renderGame();
+                }
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            
+            // Simulate starting the game
+            startButton.addEventListener('click', function() {
+                menu.style.display = 'none';
+                hud.style.display = 'block';
+                gameActive = true;
+                
+                // Get selected options
+                const selectedModel = document.querySelector('.option-button[data-model].selected').dataset.model;
+                const selectedWeapon = document.querySelector('.option-button[data-weapon].selected').dataset.weapon;
+                const selectedMap = document.querySelector('.option-button[data-map].selected').dataset.map;
+                
+                // Update weapon display
+                const weaponDisplay = document.getElementById('weapon-display');
+                if (selectedWeapon === 'assault') {
+                    weaponDisplay.textContent = 'ASSAULT RIFLE';
+                } else if (selectedWeapon === 'shotgun') {
+                    weaponDisplay.textContent = 'SHOTGUN';
+                } else if (selectedWeapon === 'sniper') {
+                    weaponDisplay.textContent = 'SNIPER RIFLE';
+                }
+                
+                // Show connected message
+                showMessage('CONNECTED TO SERVER - 6 PLAYERS ONLINE');
+                
+                // Lock pointer
+                canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+                canvas.requestPointerLock();
+                
+                // Start game loop
+                gameLoop();
+            });
+            
+            // Mouse movement for looking around
+            document.addEventListener('mousemove', function(e) {
+                if (gameActive) {
+                    playerDirection += e.movementX * 0.01;
+                }
+            });
+            
+            // Keyboard controls
+            const keys = {};
+            document.addEventListener('keydown', function(e) {
+                keys[e.key] = true;
+                
+                // Handle reloading
+                if (gameActive && e.key === 'r') {
+                    reload();
+                }
+                
+                // Handle weapon switching
+                if (gameActive && e.key === '1' || e.key === '2' || e.key === '3') {
+                    switchWeapon(parseInt(e.key));
+                }
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                keys[e.key] = false;
+            });
+            
+            // Mouse click for shooting
+            document.addEventListener('click', function() {
+                if (gameActive) {
+                    shoot();
+                }
+            });
+            
+            function shoot() {
+                if (playerAmmo > 0) {
+                    playerAmmo--;
+                    updateAmmoDisplay();
+                    
+                    // Simulate hit detection
+                    if (Math.random() > 0.7) {
+                        // Simulate getting a kill
+                        playerKills++;
+                        showMessage('YOU ELIMINATED PLAYER' + Math.floor(Math.random() * 10 + 1));
+                        updatePlayerList();
+                    }
+                } else {
+                    showMessage('OUT OF AMMO - PRESS R TO RELOAD');
+                }
+            }
+            
+            function reload() {
+                if (playerReserveAmmo > 0) {
+                    showMessage('RELOADING...');
+                    setTimeout(() => {
+                        const ammoNeeded = 30 - playerAmmo;
+                        const ammoToReload = Math.min(ammoNeeded, playerReserveAmmo);
+                        playerAmmo += ammoToReload;
+                        playerReserveAmmo -= ammoToReload;
+                        updateAmmoDisplay();
+                    }, 1500);
+                } else {
+                    showMessage('NO RESERVE AMMO LEFT');
+                }
+            }
+            
+            function switchWeapon(num) {
+                const weaponDisplay = document.getElementById('weapon-display');
+                if (num === 1) {
+                    weaponDisplay.textContent = 'ASSAULT RIFLE';
+                    showMessage('SWITCHED TO ASSAULT RIFLE');
+                } else if (num === 2) {
+                    weaponDisplay.textContent = 'SHOTGUN';
+                    showMessage('SWITCHED TO SHOTGUN');
+                } else if (num === 3) {
+                    weaponDisplay.textContent = 'SNIPER RIFLE';
+                    showMessage('SWITCHED TO SNIPER RIFLE');
+                }
+            }
+            
+            function updateAmmoDisplay() {
+                const ammoDisplay = document.getElementById('ammo-display');
+                ammoDisplay.textContent = playerAmmo + ' / ' + playerReserveAmmo;
+            }
+            
+            function updatePlayerList() {
+                const playerList = document.getElementById('player-list');
+                playerList.innerHTML = `
+                    <div class="player-item">PLAYER1: 5</div>
+                    <div class="player-item">PLAYER2: 3</div>
+                    <div class="player-item">YOU: ${playerKills}</div>
+                    <div class="player-item">PLAYER4: 1</div>
+                `;
+            }
+            
+            function showMessage(msg) {
+                messageArea.textContent = msg;
+                setTimeout(() => {
+                    messageArea.textContent = '';
+                }, 3000);
+            }
+            
+            // Main game loop
+            function gameLoop() {
+                if (!gameActive) return;
+                
+                // Handle movement
+                const moveSpeed = 0.1;
+                if (keys['w'] || keys['ArrowUp']) {
+                    playerPosition.x += Math.sin(playerDirection) * moveSpeed;
+                    playerPosition.y += Math.cos(playerDirection) * moveSpeed;
+                }
+                if (keys['s'] || keys['ArrowDown']) {
+                    playerPosition.x -= Math.sin(playerDirection) * moveSpeed;
+                    playerPosition.y -= Math.cos(playerDirection) * moveSpeed;
+                }
+                if (keys['a'] || keys['ArrowLeft']) {
+                    playerPosition.x -= Math.sin(playerDirection + Math.PI/2) * moveSpeed;
+                    playerPosition.y -= Math.cos(playerDirection + Math.PI/2) * moveSpeed;
+                }
+                if (keys['d'] || keys['ArrowRight']) {
+                    playerPosition.x += Math.sin(playerDirection + Math.PI/2) * moveSpeed;
+                    playerPosition.y += Math.cos(playerDirection + Math.PI/2) * moveSpeed;
+                }
+                
+                // Simulate taking damage occasionally
+                if (Math.random() < 0.01) {
+                    takeDamage(Math.floor(Math.random() * 10) + 5);
+                }
+                
+                renderGame();
+                requestAnimationFrame(gameLoop);
+            }
+            
+            function takeDamage(amount) {
+                playerHealth = Math.max(0, playerHealth - amount);
+                document.getElementById('health-fill').style.width = playerHealth + '%';
+                
+                if (playerHealth <= 30) {
+                    document.getElementById('health-fill').style.backgroundColor = 'red';
+                }
+                
+                if (playerHealth === 0) {
+                    showMessage('YOU WERE ELIMINATED! RESPAWNING...');
+                    setTimeout(() => {
+                        playerHealth = 100;
+                        document.getElementById('health-fill').style.width = '100%';
+                        document.getElementById('health-fill').style.backgroundColor = 'var(--neon-pink)';
+                    }, 3000);
+                }
+            }
+            
+            // Render the game scene
+            function renderGame() {
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw sky
+                const gradient = ctx.createLinearGradient(0, 0, 0, height);
+                gradient.addColorStop(0, '#1a0033');
+                gradient.addColorStop(1, '#000000');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw a retro grid floor
+                ctx.save();
+                ctx.translate(width/2, height/2);
+                ctx.rotate(-playerDirection);
+                
+                // Draw grid lines
+                const gridSize = 50;
+                const gridExtent = 2000;
+                
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
+                ctx.lineWidth = 1;
+                
+                // Vertical grid lines
+                for (let x = -gridExtent; x <= gridExtent; x += gridSize) {
+                    const offsetX = x - playerPosition.x % gridSize;
+                    ctx.beginPath();
+                    ctx.moveTo(offsetX, -gridExtent);
+                    ctx.lineTo(offsetX, gridExtent);
+                    ctx.stroke();
+                }
+                
+                // Horizontal grid lines
+                for (let y = -gridExtent; y <= gridExtent; y += gridSize) {
+                    const offsetY = y - playerPosition.y % gridSize;
+                    ctx.beginPath();
+                    ctx.moveTo(-gridExtent, offsetY);
+                    ctx.lineTo(gridExtent, offsetY);
+                    ctx.stroke();
+                }
+                
+                // Draw some 3D objects (simple boxes)
+                for (let i = 0; i < 20; i++) {
+                    const objX = (i * 200) - playerPosition.x;
+                    const objY = ((i % 5) * 200) - playerPosition.y;
+                    
+                    // Only draw if in view distance
+                    if (Math.abs(objX) < 1000 && Math.abs(objY) < 1000) {
+                        ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 0, 230, 0.7)' : 'rgba(0, 243, 255, 0.7)';
+                        ctx.fillRect(objX - 20, objY - 20, 40, 40);
+                    }
+                }
+                
+                // Simulate other players
+                for (let i = 0; i < 5; i++) {
+                    const playerX = (Math.sin(Date.now() / 2000 + i) * 300) - playerPosition.x;
+                    const playerY = (Math.cos(Date.now() / 1500 + i) * 300) - playerPosition.y;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+                    ctx.beginPath();
+                    ctx.arc(playerX, playerY, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Player name
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Courier New';
+                    ctx.fillText('PLAYER' + (i+1), playerX - 25, playerY - 25);
+                }
+                
+                ctx.restore();
+                
+                // Draw weapon model (just a simple placeholder)
+                const weaponDisplay = document.getElementById('weapon-display').textContent;
+                
+                ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+                
+                if (weaponDisplay === 'ASSAULT RIFLE') {
+                    // Draw assault rifle
+                    ctx.fillRect(width/2 + 20, height - 100, 100, 20);
+                    ctx.fillRect(width/2 - 5, height - 90, 150, 40);
+                } else if (weaponDisplay === 'SHOTGUN') {
+                    // Draw shotgun
+                    ctx.fillRect(width/2 + 20, height - 100, 80, 30);
+                    ctx.fillRect(width/2 - 5, height - 85, 120, 25);
+                } else if (weaponDisplay === 'SNIPER RIFLE') {
+                    // Draw sniper
+                    ctx.fillRect(width/2 + 20, height - 100, 150, 15);
+                    ctx.fillRect(width/2 - 5, height - 95, 180, 30);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
