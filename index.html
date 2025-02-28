@@ -269,12 +269,8 @@
             position: relative;
         }
 
-        #shoot-button {
+        #shoot-button, #reload-button, #pause-mobile-button {
             position: absolute;
-            right: 160px;
-            bottom: 20px;
-            width: 80px;
-            height: 80px;
             background-color: rgba(255, 0, 0, 0.5);
             border-radius: 40px;
             display: flex;
@@ -285,20 +281,21 @@
             pointer-events: all;
         }
 
+        #shoot-button {
+            right: 160px;
+            bottom: 20px;
+        }
+
         #reload-button {
-            position: absolute;
             right: 250px;
             bottom: 20px;
-            width: 80px;
-            height: 80px;
             background-color: rgba(255, 255, 0, 0.5);
-            border-radius: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            pointer-events: all;
+        }
+
+        #pause-mobile-button {
+            top: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 255, 0.5);
         }
 
         .muzzle-flash {
@@ -311,6 +308,41 @@
             transition: opacity 0.05s;
         }
         
+        #pause-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 2rem;
+        }
+
+        #pause-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2rem;
+            color: white;
+            cursor: pointer;
+            pointer-events: all;
+            z-index: 20;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
         @media (max-width: 768px) {
             .retro-title {
                 font-size: 2.5rem;
@@ -339,6 +371,56 @@
 
             #weapon-display {
                 font-size: 1rem;
+            }
+
+            /* Scale mobile control elements based on screen size */
+            .control-zone {
+                width: 18vw;
+                height: 18vw;
+                border-radius: 9vw;
+            }
+
+            .joystick {
+                width: 9vw;
+                height: 9vw;
+                border-radius: 4.5vw;
+            }
+
+            #shoot-button, #reload-button {
+                width: 12vw;
+                height: 12vw;
+                font-size: 0.8rem;
+                border-radius: 6vw;
+            }
+
+            #pause-mobile-button {
+                width: 10vw;
+                height: 10vw;
+                font-size: 0.7rem;
+                border-radius: 5vw;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .control-zone {
+                width: 24vw;
+                height: 24vw;
+                border-radius: 12vw;
+            }
+
+            .joystick {
+                width: 12vw;
+                height: 12vw;
+                border-radius: 6vw;
+            }
+
+            #shoot-button, #reload-button {
+                width: 16vw;
+                height: 16vw;
+            }
+
+            #reload-button {
+                right: 18vw;
             }
         }
         
@@ -476,6 +558,7 @@
             <div class="weapon-model">
                 <div class="muzzle-flash"></div>
             </div>
+            <button id="pause-button">☰</button>
         </div>
 
         <!-- Mobile Controls -->
@@ -488,6 +571,17 @@
             </div>
             <div id="shoot-button">FIRE</div>
             <div id="reload-button">RELOAD</div>
+            <div id="pause-mobile-button">MENU</div>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pause-menu">
+            <h1 class="retro-title">PAUSED</h1>
+            <div class="menu-buttons">
+                <button class="retro-button" id="resume-button">RESUME GAME</button>
+                <button class="retro-button" id="change-loadout-button">CHANGE LOADOUT</button>
+                <button class="retro-button" id="quit-button">QUIT TO MENU</button>
+            </div>
         </div>
     </div>
 
@@ -505,6 +599,12 @@
             const canvas = document.getElementById('game-canvas');
             const ctx = canvas.getContext('2d');
             const mobileControls = document.getElementById('mobile-controls');
+            const pauseMenu = document.getElementById('pause-menu');
+            const pauseButton = document.getElementById('pause-button');
+            const pauseMobileButton = document.getElementById('pause-mobile-button');
+            const resumeButton = document.getElementById('resume-button');
+            const changeLoadoutButton = document.getElementById('change-loadout-button');
+            const quitButton = document.getElementById('quit-button');
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             // 3D rendering constants
@@ -516,6 +616,7 @@
             // Hide HUD initially
             hud.style.display = 'none';
             mobileControls.style.display = 'none';
+            pauseMenu.style.display = 'none';
             
             // Simulate loading
             let progress = 0;
@@ -546,6 +647,7 @@
             
             // Game state
             let gameActive = false;
+            let gamePaused = false;
             let playerHealth = 100;
             let playerAmmo = 30;
             let playerReserveAmmo = 90;
@@ -571,7 +673,7 @@
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                if (gameActive) {
+                if (gameActive && !gamePaused) {
                     renderGame();
                 }
             }
@@ -739,6 +841,15 @@
                 const shootButton = document.getElementById('shoot-button');
                 const reloadButton = document.getElementById('reload-button');
                 
+                // Set size based on viewport
+                const mobileButtonSize = Math.min(window.innerWidth, window.innerHeight) * 0.15;
+                shootButton.style.width = `${mobileButtonSize}px`;
+                shootButton.style.height = `${mobileButtonSize}px`;
+                reloadButton.style.width = `${mobileButtonSize}px`;
+                reloadButton.style.height = `${mobileButtonSize}px`;
+                pauseMobileButton.style.width = `${mobileButtonSize * 0.8}px`;
+                pauseMobileButton.style.height = `${mobileButtonSize * 0.8}px`;
+                
                 let moveTouch = null;
                 let lookTouch = null;
                 
@@ -750,7 +861,7 @@
                         if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
                             touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
                             moveTouch = touch;
-                            moveJoystick.style.transform = `translate(${touch.clientX - rect.left - 30}px, ${touch.clientY - rect.top - 30}px)`;
+                            moveJoystick.style.transform = `translate(${touch.clientX - rect.left - rect.width/4}px, ${touch.clientY - rect.top - rect.height/4}px)`;
                             break;
                         }
                     }
@@ -769,7 +880,7 @@
                             
                             // Constrain to circle
                             const distance = Math.sqrt(dx * dx + dy * dy);
-                            const maxRadius = rect.width / 2 - 30;
+                            const maxRadius = rect.width / 2 - rect.width/4;
                             
                             if (distance > maxRadius) {
                                 dx = dx / distance * maxRadius;
@@ -808,7 +919,7 @@
                         if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
                             touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
                             lookTouch = touch;
-                            lookJoystick.style.transform = `translate(${touch.clientX - rect.left - 30}px, ${touch.clientY - rect.top - 30}px)`;
+                            lookJoystick.style.transform = `translate(${touch.clientX - rect.left - rect.width/4}px, ${touch.clientY - rect.top - rect.height/4}px)`;
                             break;
                         }
                     }
@@ -827,7 +938,7 @@
                             
                             // Constrain to circle
                             const distance = Math.sqrt(dx * dx + dy * dy);
-                            const maxRadius = rect.width / 2 - 30;
+                            const maxRadius = rect.width / 2 - rect.width/4;
                             
                             if (distance > maxRadius) {
                                 dx = dx / distance * maxRadius;
@@ -836,9 +947,9 @@
                             
                             lookJoystick.style.transform = `translate(${dx}px, ${dy}px)`;
                             
-                            // Apply look rotation
+                            // Apply look rotation (with inverted Y)
                             playerDirection += dx * 0.003;
-                            playerPitch += dy * 0.003;
+                            playerPitch -= dy * 0.003; // Inverted Y axis
                             
                             // Clamp pitch to avoid flipping
                             playerPitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, playerPitch));
@@ -873,7 +984,68 @@
                 reloadButton.addEventListener('touchstart', function() {
                     reload();
                 }, { passive: true });
+                
+                // Pause button for mobile
+                pauseMobileButton.addEventListener('touchstart', function() {
+                    togglePause();
+                }, { passive: true });
             }
+            
+            // Toggle pause menu
+            function togglePause() {
+                if (gameActive) {
+                    gamePaused = !gamePaused;
+                    
+                    if (gamePaused) {
+                        pauseMenu.style.display = 'flex';
+                        if (!isMobile) {
+                            document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
+                            document.exitPointerLock();
+                        }
+                    } else {
+                        pauseMenu.style.display = 'none';
+                        if (!isMobile) {
+                            canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+                            canvas.requestPointerLock();
+                        }
+                        requestAnimationFrame(gameLoop);
+                    }
+                }
+            }
+            
+            // Setup pause menu buttons
+            pauseButton.addEventListener('click', togglePause);
+            
+            resumeButton.addEventListener('click', function() {
+                togglePause();
+            });
+            
+            changeLoadoutButton.addEventListener('click', function() {
+                pauseMenu.style.display = 'none';
+                menu.style.display = 'flex';
+                gameActive = false;
+                gamePaused = false;
+                hud.style.display = 'none';
+                mobileControls.style.display = 'none';
+            });
+            
+            quitButton.addEventListener('click', function() {
+                pauseMenu.style.display = 'none';
+                menu.style.display = 'flex';
+                gameActive = false;
+                gamePaused = false;
+                hud.style.display = 'none';
+                mobileControls.style.display = 'none';
+                
+                // Reset player stats
+                playerHealth = 100;
+                playerAmmo = 30;
+                playerReserveAmmo = 90;
+                playerKills = 0;
+                playerPosition = { x: 0, y: 0, z: 1.7 };
+                playerDirection = 0;
+                playerPitch = 0;
+            });
             
             // Simulate starting the game
             startButton.addEventListener('click', function() {
@@ -883,6 +1055,7 @@
                     mobileControls.style.display = 'block';
                 }
                 gameActive = true;
+                gamePaused = false;
                 
                 // Get selected options
                 const selectedModel = document.querySelector('.option-button[data-model].selected').dataset.model;
@@ -905,6 +1078,15 @@
                 // Initialize game world
                 initGameWorld();
                 
+                // Reset player position
+                playerPosition = { x: 0, y: 0, z: 1.7 };
+                playerDirection = 0;
+                playerPitch = 0;
+                
+                // Update health display
+                document.getElementById('health-fill').style.width = '100%';
+                document.getElementById('health-fill').style.backgroundColor = 'var(--neon-pink)';
+                
                 // Show connected message
                 showMessage('CONNECTED TO SERVER - 6 PLAYERS ONLINE');
                 
@@ -918,14 +1100,15 @@
                 }
                 
                 // Start game loop
+                lastFrameTime = performance.now();
                 requestAnimationFrame(gameLoop);
             });
             
             // Mouse movement for looking around
             document.addEventListener('mousemove', function(e) {
-                if (gameActive && !isMobile) {
+                if (gameActive && !gamePaused && !isMobile) {
                     playerDirection += e.movementX * 0.002;
-                    playerPitch += e.movementY * 0.002;
+                    playerPitch -= e.movementY * 0.002; // Invert Y axis
                     
                     // Clamp pitch to avoid flipping
                     playerPitch = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, playerPitch));
@@ -938,13 +1121,18 @@
                 keys[e.key.toLowerCase()] = true;
                 
                 // Handle reloading
-                if (gameActive && (e.key === 'r' || e.key === 'R')) {
+                if (gameActive && !gamePaused && (e.key === 'r' || e.key === 'R')) {
                     reload();
                 }
                 
                 // Handle weapon switching
-                if (gameActive && (e.key === '1' || e.key === '2' || e.key === '3')) {
+                if (gameActive && !gamePaused && (e.key === '1' || e.key === '2' || e.key === '3')) {
                     switchWeapon(parseInt(e.key));
+                }
+                
+                // Handle pausing
+                if (gameActive && (e.key === 'Escape' || e.key === 'p' || e.key === 'P')) {
+                    togglePause();
                 }
             });
             
@@ -954,7 +1142,7 @@
             
             // Mouse click for shooting
             document.addEventListener('mousedown', function(e) {
-                if (gameActive && e.button === 0) {
+                if (gameActive && !gamePaused && e.button === 0) {
                     isShooting = true;
                     shoot();
                 }
@@ -967,7 +1155,7 @@
             });
             
             function shoot() {
-                if (isReloading) return;
+                if (isReloading || gamePaused) return;
                 
                 const currentTime = Date.now();
                 const weaponDisplay = document.getElementById('weapon-display').textContent;
@@ -1044,7 +1232,7 @@
             }
             
             function reload() {
-                if (isReloading || playerReserveAmmo <= 0) return;
+                if (isReloading || playerReserveAmmo <= 0 || gamePaused) return;
                 
                 isReloading = true;
                 showMessage('RELOADING...');
@@ -1222,7 +1410,7 @@
             
             // Main game loop
             function gameLoop(timestamp) {
-                if (!gameActive) return;
+                if (!gameActive || gamePaused) return;
                 
                 // Calculate delta time for smooth movement
                 const deltaTime = (timestamp - lastFrameTime) / 16.667; // Normalize to ~60fps
@@ -1245,7 +1433,7 @@
                 }
                 
                 // Apply movement
-                const moveSpeed = 0.15 * deltaTime;
+                const moveSpeed = 0.2 * deltaTime;
                 const actualSpeed = Math.sqrt(moveForward*moveForward + moveSide*moveSide) > 1 ? 
                     moveSpeed / Math.sqrt(moveForward*moveForward + moveSide*moveSide) : moveSpeed;
                 
@@ -1423,45 +1611,80 @@
                 const fovFactor = Math.tan(FOV / 2);
                 
                 // Draw the floor (based on map)
-                ctx.save();
-                
                 if (worldMap === 'grid') {
-                    // Grid floor with perspective
-                    for (let z = 1; z < 20; z++) {
-                        const scale = height / z;
-                        const brightness = 1 / z * 2;
+                    // Draw grid floor with a more solid base
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, height / 2 + playerPitch * 100, width, height / 2);
+                    
+                    // Grid lines
+                    const gridSize = 20; // Grid cell size
+                    const gridExtentX = 20; // How many cells in each direction
+                    const gridExtentZ = 20;
+                    
+                    // Base of floor is at height/2 + pitch adjustment
+                    const horizonY = height / 2 + playerPitch * 100;
+                    
+                    // Draw grid with perspective
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    
+                    // Z lines (depth)
+                    for (let z = 1; z < gridExtentZ; z++) {
+                        // Calculate line y position with perspective
+                        const lineY = horizonY + (height / 2) * (z / gridExtentZ);
                         
-                        // Horizontal lines
-                        ctx.strokeStyle = `rgba(0, 243, 255, ${brightness})`;
-                        ctx.lineWidth = 1;
-                        
-                        const lineY = height / 2 + playerPitch * 100 + (height / 2) / z;
-                        
-                        // Draw line across screen width
-                        ctx.beginPath();
-                        ctx.moveTo(0, lineY);
-                        ctx.lineTo(width, lineY);
-                        ctx.stroke();
-                        
-                        // Vertical lines
-                        for (let x = -10; x <= 10; x++) {
-                            const rotatedX = Math.cos(playerDirection) * x - Math.sin(playerDirection) * z;
-                            const rotatedZ = Math.sin(playerDirection) * x + Math.cos(playerDirection) * z;
-                            
-                            const projectedX = width / 2 + (rotatedX / (rotatedZ + 0.1)) * scale;
-                            
-                            if (projectedX > 0 && projectedX < width) {
-                                ctx.beginPath();
-                                ctx.moveTo(projectedX, lineY);
-                                ctx.lineTo(projectedX, height);
-                                ctx.stroke();
-                            }
+                        // Only draw if in view
+                        if (lineY < height) {
+                            ctx.beginPath();
+                            ctx.moveTo(0, lineY);
+                            ctx.lineTo(width, lineY);
+                            ctx.stroke();
                         }
                     }
+                    
+                    // X lines (horizontal)
+                    for (let x = -gridExtentX; x <= gridExtentX; x++) {
+                        // Calculate perspective endpoints
+                        const nearX = width / 2 + (x * gridSize) / 1 * (width / 2);
+                        const farX = width / 2 + (x * gridSize) / gridExtentZ * (width / 10);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(nearX, height);
+                        ctx.lineTo(farX, horizonY);
+                        ctx.stroke();
+                    }
                 } else if (worldMap === 'warehouse') {
-                    // Warehouse floor texture
+                    // Warehouse floor with concrete texture
                     ctx.fillStyle = '#333';
                     ctx.fillRect(0, height / 2 + playerPitch * 100, width, height / 2);
+                    
+                    // Add texture pattern
+                    ctx.strokeStyle = '#2a2a2a';
+                    ctx.lineWidth = 1;
+                    
+                    // Base of floor is at height/2 + pitch adjustment
+                    const horizonY = height / 2 + playerPitch * 100;
+                    
+                    // Draw concrete seams with perspective
+                    const seams = 10;
+                    for (let i = 1; i < seams; i++) {
+                        const y = horizonY + (height - horizonY) * (i / seams);
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                    
+                    for (let i = 0; i <= seams; i++) {
+                        const x = width * (i / seams);
+                        const topY = horizonY;
+                        const bottomY = height;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x, topY);
+                        ctx.lineTo(x, bottomY);
+                        ctx.stroke();
+                    }
                 } else if (worldMap === 'neon') {
                     // Neon city floor with reflections
                     const floorGradient = ctx.createLinearGradient(0, height / 2 + playerPitch * 100, 0, height);
@@ -1470,25 +1693,32 @@
                     ctx.fillStyle = floorGradient;
                     ctx.fillRect(0, height / 2 + playerPitch * 100, width, height / 2);
                     
-                    // Reflection grid lines
-                    for (let z = 5; z < 20; z += 3) {
-                        const scale = height / z;
-                        const brightness = 1 / z;
-                        
-                        ctx.strokeStyle = `rgba(255, 0, 230, ${brightness * 0.5})`;
-                        ctx.lineWidth = 1;
-                        
-                        const lineY = height / 2 + playerPitch * 100 + (height / 2) / z;
-                        
-                        // Draw line across screen width
+                    // Base of floor is at height/2 + pitch adjustment
+                    const horizonY = height / 2 + playerPitch * 100;
+                    
+                    // Add neon grid
+                    ctx.strokeStyle = 'rgba(255, 0, 230, 0.3)';
+                    ctx.lineWidth = 1;
+                    
+                    // Horizontal lines with perspective
+                    for (let i = 1; i < 10; i++) {
+                        const y = horizonY + (height - horizonY) * (i / 10);
                         ctx.beginPath();
-                        ctx.moveTo(0, lineY);
-                        ctx.lineTo(width, lineY);
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                    
+                    // Vertical lines with perspective
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+                    for (let i = 0; i <= 20; i++) {
+                        const x = width * (i / 20);
+                        ctx.beginPath();
+                        ctx.moveTo(x, horizonY);
+                        ctx.lineTo(width/2 + (x - width/2) * 3, height);
                         ctx.stroke();
                     }
                 }
-                
-                ctx.restore();
                 
                 // Draw walls with a simple raycasting approach
                 const rayCount = 100; // Number of rays to cast
@@ -1617,34 +1847,76 @@
                         // Calculate vertical position (affected by pitch)
                         const screenY = height / 2 - (dy / distToEnemy) * height - enemyHeight / 2 + playerPitch * 100;
                         
-                        // Draw enemy
+                        // Draw enemy with more distinct features
                         ctx.save();
                         
-                        // Enemy color based on model
-                        let color;
-                        if (enemy.model === 0) {
-                            color = 'rgba(255, 0, 0, 0.8)';
-                        } else if (enemy.model === 1) {
-                            color = 'rgba(0, 255, 0, 0.8)';
-                        } else {
-                            color = 'rgba(0, 0, 255, 0.8)';
+                        // Enemy color based on model with better visibility
+                        let primaryColor, secondaryColor, outlineColor;
+                        if (enemy.model === 0) { // Commando
+                            primaryColor = 'rgba(200, 0, 0, 0.9)';
+                            secondaryColor = 'rgba(100, 0, 0, 0.9)';
+                            outlineColor = 'rgba(255, 100, 100, 0.9)';
+                        } else if (enemy.model === 1) { // Scout
+                            primaryColor = 'rgba(0, 200, 0, 0.9)';
+                            secondaryColor = 'rgba(0, 100, 0, 0.9)';
+                            outlineColor = 'rgba(100, 255, 100, 0.9)';
+                        } else { // Heavy
+                            primaryColor = 'rgba(0, 0, 200, 0.9)';
+                            secondaryColor = 'rgba(0, 0, 100, 0.9)';
+                            outlineColor = 'rgba(100, 100, 255, 0.9)';
                         }
                         
                         // Calculate brightness based on distance
                         const brightness = Math.min(1, 1 - distToEnemy / VIEW_DISTANCE);
-                        
-                        // Draw enemy body
-                        ctx.fillStyle = color;
                         ctx.globalAlpha = brightness;
                         
-                        ctx.beginPath();
-                        ctx.arc(screenX, screenY, enemyHeight / 2, 0, Math.PI * 2);
-                        ctx.fill();
+                        // Draw enemy silhouette (more distinct)
+                        // Draw outline for better visibility
+                        ctx.strokeStyle = outlineColor;
+                        ctx.lineWidth = 3;
                         
-                        // Draw enemy head
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        // Body
+                        ctx.fillStyle = primaryColor;
+                        const bodyWidth = enemyHeight / 3;
+                        const bodyHeight = enemyHeight / 1.5;
+                        ctx.fillRect(screenX - bodyWidth/2, screenY, bodyWidth, bodyHeight);
+                        ctx.strokeRect(screenX - bodyWidth/2, screenY, bodyWidth, bodyHeight);
+                        
+                        // Head
+                        ctx.fillStyle = secondaryColor;
+                        const headSize = enemyHeight / 4;
                         ctx.beginPath();
-                        ctx.arc(screenX, screenY - enemyHeight / 3, enemyHeight / 6, 0, Math.PI * 2);
+                        ctx.arc(screenX, screenY - headSize/2, headSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                        // Arms
+                        ctx.fillStyle = primaryColor;
+                        const armWidth = bodyWidth / 3;
+                        const armHeight = bodyHeight / 1.2;
+                        // Left arm
+                        ctx.fillRect(screenX - bodyWidth/2 - armWidth, screenY + bodyHeight/4, armWidth, armHeight);
+                        // Right arm
+                        ctx.fillRect(screenX + bodyWidth/2, screenY + bodyHeight/4, armWidth, armHeight);
+                        
+                        // Weapon
+                        ctx.fillStyle = 'rgba(50, 50, 50, 0.9)';
+                        ctx.fillRect(screenX + bodyWidth/2 + armWidth - 5, screenY + bodyHeight/3, enemyHeight/2, enemyHeight/10);
+                        
+                        // State indicator
+                        let stateColor;
+                        if (enemy.state === 'patrol') {
+                            stateColor = 'rgba(255, 255, 0, 0.7)';
+                        } else if (enemy.state === 'chase') {
+                            stateColor = 'rgba(255, 165, 0, 0.7)';
+                        } else { // attack
+                            stateColor = 'rgba(255, 0, 0, 0.7)';
+                        }
+                        
+                        // Draw state indicator above head
+                        ctx.fillStyle = stateColor;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY - headSize*2, headSize/2, 0, Math.PI * 2);
                         ctx.fill();
                         
                         ctx.restore();
@@ -1686,16 +1958,19 @@
                         ctx.save();
                         
                         // Object color based on type
-                        let color;
+                        let color, iconText;
                         if (object.type === 0) {
                             // Health pickup
                             color = 'rgba(0, 255, 0, 0.8)';
+                            iconText = '✚';
                         } else if (object.type === 1) {
                             // Ammo pickup
                             color = 'rgba(255, 255, 0, 0.8)';
+                            iconText = '🔫';
                         } else {
                             // Decoration
                             color = 'rgba(0, 255, 255, 0.8)';
+                            iconText = '✧';
                         }
                         
                         // Calculate brightness based on distance
@@ -1740,12 +2015,7 @@
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
                             ctx.font = `${size}px sans-serif`;
-                            
-                            if (object.type === 0) {
-                                ctx.fillText('+', screenX, screenY);
-                            } else {
-                                ctx.fillText('•', screenX, screenY);
-                            }
+                            ctx.fillText(iconText, screenX, screenY);
                         }
                         
                         ctx.restore();
